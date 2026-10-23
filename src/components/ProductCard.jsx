@@ -11,12 +11,14 @@ import {
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, onProductClick }) {
   const { addToCart, wishlist, toggleWishlist } = useCart();
   const [added, setAdded] = useState(false);
 
-  const productId = product._id || product.id;
-  const isWishlisted = wishlist?.some((item) => (item._id || item.id) === productId);
+  const productId = product.id ?? product._id;
+  const isWishlisted = wishlist?.some(
+    (item) => (item.id ?? item._id) === productId
+  );
 
   const handleAdd = (e) => {
     e.preventDefault();
@@ -44,6 +46,7 @@ export default function ProductCard({ product }) {
         <Link
           to={`/products/${productId}`}
           className="block"
+          onClick={onProductClick}
         >
           <div className="relative aspect-[4/4.2] overflow-hidden bg-slate-100">
             <img
@@ -97,6 +100,7 @@ export default function ProductCard({ product }) {
           <Link
             to={`/products/${productId}`}
             className="mt-1 block line-clamp-2 min-h-10 text-sm font-bold text-slate-950 hover:underline sm:text-base"
+            onClick={onProductClick}
           >
             {product.name}
           </Link>

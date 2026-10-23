@@ -20,8 +20,15 @@ import { products } from "../data/products";
 import ProductCard from "../components/ProductCard";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import ProductReviews from "../components/ProductReviews";
 import { useCart } from "../context/CartContext";
 import { behaviorApi } from "../services/behaviorApi";
+import {
+  fetchFrequentlyBoughtTogether,
+  fetchSimilarProducts,
+} from "../services/weatherApi";
+import { updateMeta, injectStructuredData, schemaGenerators } from "../utils/seo";
+import { analytics } from "../services/analyticsTracker";
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -30,17 +37,42 @@ export default function ProductDetails() {
   const product = products.find(
     (item) => item.id === Number(id)
   );
+  const productIdentity = product?._id || product?.id;
 
   const [quantity, setQuantity] = useState(1);
 
-  // Track product view for personalized recommendations
+  // Track product view for personalized recommendations & analytics pipeline
   useEffect(() => {
-    if (product?.id) {
-      // Use string id as productId for tracking
-      // Backend gracefully handles missing productId in MongoDB
-      behaviorApi.viewProduct(String(product.id));
+    if (productIdentity) {
+      behaviorApi.viewProduct(String(productIdentity));
     }
-  }, [product?.id]);
+    if (product) {
+      analytics.trackView(product);
+    }
+  }, [productIdentity, product]);
+
+  // Dynamic SEO & Structured Data
+  useEffect(() => {
+    if (product) {
+      updateMeta({
+        title: `${product.name} - ₹${product.price} | WeatherCart`,
+        description: product.description || `Buy ${product.name} at ₹${product.price}. Engineered for ${product.weatherTag || "all-weather"} protection.`,
+        canonical: window.location.href,
+        ogImage: product.image,
+        type: "product",
+      });
+      injectStructuredData(schemaGenerators.product(product), "product-ld-json");
+      injectStructuredData(
+        schemaGenerators.breadcrumbs([
+          { name: "Home", url: `${window.location.origin}/` },
+          { name: "Products", url: `${window.location.origin}/products` },
+          { name: product.category || "Gear", url: `${window.location.origin}/products?category=${encodeURIComponent(product.category || "")}` },
+          { name: product.name, url: window.location.href },
+        ]),
+        "product-breadcrumb-schema"
+      );
+    }
+  }, [product]);
 
   if (!product) {
     return <ProductNotFound />;
@@ -77,13 +109,7 @@ export default function ProductDetails() {
             <ProductImage
               product={product}
               liked={liked}
-              setLiked={() => {
-                toggleWishlist(product);
-                // Track wishlist action for personalized recommendations
-                if (!liked) {
-                  behaviorApi.wishlist(String(product.id));
-                }
-              }}
+              setLiked={() => toggleWishlist(product)}
               discount={discount}
             />
 
@@ -104,8 +130,14 @@ export default function ProductDetails() {
         {/* AI EXPLANATION */}
         <AIExplanation product={product} />
 
+        {/* CUSTOMER REVIEWS & TRUST (Step 30) */}
+        <ProductReviews
+          productId={productIdentity}
+          productName={product.name}
+        />
+
         {/* RELATED PRODUCTS */}
-        <RelatedProducts currentId={product.id} />
+        <RelatedProducts currentProduct={product} />
       </main>
 
       <Footer />
@@ -444,14 +476,50 @@ function AIStat({ label, value }) {
 
 /* ---------------- RELATED ---------------- */
 
-function RelatedProducts({ currentId }) {
-  const related = products
-    .filter((product) => product.id !== currentId)
-    .slice(0, 3);
+function RelatedProducts({ currentProduct }) {
+  const [related, setRelated] = useState([]);
+  const [bundled, setBundled] = useState([]);
+  const [loadError, setLoadError] = useState("");
+  const productId = String(currentProduct._id || currentProduct.id);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRecommendations() {
+      try {
+        const [similarResult, bundleResult] = await Promise.all([
+          fetchSimilarProducts(productId),
+          fetchFrequentlyBoughtTogether(productId),
+        ]);
+        if (!active) return;
+        setRelated((similarResult.recommendations || []).map((item) => item.product));
+        setBundled((bundleResult.recommendations || []).map((item) => item.product));
+      } catch (error) {
+        console.error("Product recommendations could not be loaded:", error);
+        if (!active) return;
+        setLoadError("Live recommendations are temporarily unavailable.");
+        setRelated(
+          products
+            .filter((product) => product.id !== currentProduct.id)
+            .slice(0, 3)
+        );
+      }
+    }
+
+    loadRecommendations();
+    return () => {
+      active = false;
+    };
+  }, [currentProduct.id, productId]);
 
   return (
     <section className="bg-slate-50 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-7xl">
+        {loadError && (
+          <p className="mb-4 text-sm text-amber-700" role="status">
+            {loadError}
+          </p>
+        )}
 
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
@@ -466,11 +534,27 @@ function RelatedProducts({ currentId }) {
         <div className="mt-8 grid grid-cols-1 gap-4 min-[380px]:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {related.map((product) => (
             <ProductCard
-              key={product.id}
+              key={product._id || product.id}
               product={product}
             />
           ))}
         </div>
+
+        {bundled.length > 0 && (
+          <div className="mt-14">
+            <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
+              Often bought together
+            </p>
+            <h2 className="mt-2 text-3xl font-bold text-slate-950">
+              Complete the Set
+            </h2>
+            <div className="mt-8 grid grid-cols-1 gap-4 min-[380px]:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+              {bundled.map((product) => (
+                <ProductCard key={product._id || product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

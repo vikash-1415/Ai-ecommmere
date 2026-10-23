@@ -1,0 +1,19 @@
+{
+  "name": "WeatherCart - AI Weather Shopping",
+  "short_name": "WeatherCart",
+  "description": "Smart personalized e-commerce tailored to real-time meteorological conditions and user preferences.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "portrait-primary",
+  "categories": ["shopping", "lifestyle", "weather"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

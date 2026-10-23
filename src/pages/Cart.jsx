@@ -241,6 +241,17 @@ function OrderSummary({
           </div>
         )}
 
+        {/* COUPON TEASER */}
+        <div className="mt-4 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/60 p-3">
+          <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
+            <span>🎉 Have a Coupon?</span>
+            <span className="font-extrabold text-[11px] bg-emerald-100 px-2 py-0.5 rounded-md">WEATHER10</span>
+          </div>
+          <p className="mt-1 text-[11px] text-emerald-700">
+            Use code <span className="font-bold">WEATHER10</span> or <span className="font-bold">MONSOON20</span> at checkout for instant discounts.
+          </p>
+        </div>
+
         <Link
           to="/checkout"
           className="mt-6 flex w-full items-center justify-center rounded-xl bg-slate-950 py-4 text-sm font-bold text-white transition hover:bg-slate-800"

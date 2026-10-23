@@ -16,6 +16,7 @@ import { useWeather } from "../context/WeatherContext";
 import {
   fetchPersonalizedRecommendations,
 } from "../services/weatherApi";
+import { behaviorApi } from "../services/behaviorApi";
 import ProductCard from "./ProductCard";
 
 // ─────────────────────────────────────────────
@@ -55,6 +56,20 @@ function MatchBadge({ match }) {
   );
 }
 
+function renderConditionIcon(condition) {
+  const normalized = (condition || "").toLowerCase();
+  if (normalized.includes("rain") || normalized.includes("drizzle")) {
+    return <CloudRain size={16} className="text-amber-400" />;
+  }
+  if (normalized.includes("snow") || normalized.includes("cold")) {
+    return <Snowflake size={16} className="text-amber-400" />;
+  }
+  if (normalized.includes("wind")) {
+    return <Wind size={16} className="text-amber-400" />;
+  }
+  return <Sun size={16} className="text-amber-400" />;
+}
+
 // ─────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────
@@ -68,25 +83,37 @@ export default function RecommendationSection() {
 
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [normalizedWeather, setNormalizedWeather] = useState(null);
   const [isPersonalized, setIsPersonalized] = useState(false);
+  const [algorithmVersion, setAlgorithmVersion] = useState("");
 
   useEffect(() => {
-    if (!weather) return;
+    if (weatherLoading) return;
 
     let isMounted = true;
 
     async function getRecs() {
       try {
         setLoading(true);
-        const data = await fetchPersonalizedRecommendations(weather);
+        setLoadError("");
+        const currentWeather = weather || {
+          temperature: 27,
+          humidity: 65,
+          condition: "Clear",
+        };
+        const data = await fetchPersonalizedRecommendations(currentWeather);
         if (isMounted) {
           setRecommendations(data.recommendations || []);
           setNormalizedWeather(data.weather || null);
           setIsPersonalized(!!data.personalized);
+          setAlgorithmVersion(data.algorithmVersion || "");
         }
       } catch (err) {
         console.error("Failed to load recommendations:", err);
+        if (isMounted) {
+          setLoadError(err.message || "Recommendations are temporarily unavailable.");
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -97,7 +124,7 @@ export default function RecommendationSection() {
     return () => {
       isMounted = false;
     };
-  }, [weather]);
+  }, [weather, weatherLoading]);
 
   const cityName =
     selectedCityName || weather?.location?.name || "Your City";
@@ -105,15 +132,6 @@ export default function RecommendationSection() {
     ? Math.round(weather.temperature)
     : 26;
   const condition = weather?.condition || "Clear";
-
-  const getConditionIcon = (cond) => {
-    const c = (cond || "").toLowerCase();
-    if (c.includes("rain") || c.includes("drizzle")) return CloudRain;
-    if (c.includes("snow") || c.includes("cold")) return Snowflake;
-    if (c.includes("wind")) return Wind;
-    return Sun;
-  };
-  const ConditionIcon = getConditionIcon(condition);
 
   // AI insight narrative
   const getAiInsightText = () => {
@@ -207,7 +225,7 @@ export default function RecommendationSection() {
                 <span className="h-1 w-1 rounded-full bg-slate-600" />
 
                 <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-200">
-                  <ConditionIcon size={16} className="text-amber-400" />
+                  {renderConditionIcon(condition)}
                   {weather?.description || condition}
                 </span>
 
@@ -233,6 +251,11 @@ export default function RecommendationSection() {
               <p className="mt-1.5 text-xs leading-5 text-slate-300">
                 {getAiInsightText()}
               </p>
+              {algorithmVersion && (
+                <p className="mt-2 text-[10px] text-slate-500">
+                  Recommendation model: {algorithmVersion}
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -250,6 +273,12 @@ export default function RecommendationSection() {
         )}
 
         {/* ── Ranked Product Grid ── */}
+        {loadError && (
+          <p className="mt-6 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
+            {loadError}
+          </p>
+        )}
+
         {!loading && recommendations.length > 0 && (
           <div className="mt-8 grid grid-cols-1 gap-4 min-[380px]:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
             {recommendations.slice(0, 4).map((item, idx) => (
@@ -268,7 +297,15 @@ export default function RecommendationSection() {
                 {/* Match % badge (right, dark) */}
                 <MatchBadge match={item.match} />
 
-                <ProductCard product={item.product} />
+                <ProductCard
+                  product={item.product}
+                  onProductClick={() =>
+                    behaviorApi.recommendationClick(
+                      item.product._id || item.product.id,
+                      algorithmVersion
+                    )
+                  }
+                />
 
                 {/* Reason text below card */}
                 {item.reason?.text && (

@@ -1,40 +1,33 @@
 const API_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-/**
- * Generic tracker — silently ignores failures so shopping
- * flow is never interrupted by analytics errors.
- */
-async function track(endpoint, productId) {
+async function track(endpoint, productId, metadata = {}) {
   const token = localStorage.getItem("weathercart-token");
-
-  // Only track for logged-in users
-  if (!token) return;
+  if (!token || !productId) return;
 
   try {
-    await fetch(`${API_URL}/behavior/${endpoint}`, {
+    const response = await fetch(`${API_URL}/behavior/${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ productId }),
+      body: JSON.stringify({ productId, ...metadata }),
     });
-  } catch {
-    // Analytics failure must never break the shopping experience
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.message || `Activity tracking failed (${response.status})`);
+    }
+  } catch (error) {
+    console.error("Behavior analytics request failed:", error);
   }
 }
 
 export const behaviorApi = {
-  /**
-   * Track when a user views a product detail page.
-   * Increments view count + category preference score by +1.
-   */
   viewProduct: (productId) => track("view", productId),
-
-  /**
-   * Track when a user wishlists a product.
-   * Increments category preference score by +3.
-   */
   wishlist: (productId) => track("wishlist", productId),
+  cartAdd: (productId) => track("cart", productId),
+  recommendationClick: (productId, algorithmVersion) =>
+    track("recommendation-click", productId, { algorithmVersion }),
 };

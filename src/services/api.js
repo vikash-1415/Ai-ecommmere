@@ -49,13 +49,31 @@ export const api = {
   getProducts: (params = "") =>
     request(`/products${params}`),
 
+  getSuggestions: (query) =>
+    request(`/products/suggestions?q=${encodeURIComponent(query)}`),
+
+  getFilterOptions: () =>
+    request("/products/filter-options"),
+
   getProduct: (id) =>
     request(`/products/${id}`),
+
+  validateCoupon: (code, subtotal) =>
+    request("/orders/validate-coupon", {
+      method: "POST",
+      body: JSON.stringify({ code, subtotal }),
+    }),
 
   createOrder: (order) =>
     request("/orders", {
       method: "POST",
       body: JSON.stringify(order),
+    }),
+
+  verifyPayment: (data) =>
+    request("/orders/verify-payment", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 
   getMyOrders: () =>
@@ -71,4 +89,27 @@ export const api = {
         method: "PATCH",
       }
     ),
+
+  getProductReviews: (productId, params = "") =>
+    request(`/reviews/product/${productId}${params}`),
+
+  submitReview: (productId, reviewData) =>
+    request(`/reviews/product/${productId}`, {
+      method: "POST",
+      body: JSON.stringify(reviewData),
+    }),
+
+  voteReviewHelpful: (reviewId) =>
+    request(`/reviews/${reviewId}/helpful`, {
+      method: "POST",
+    }),
+
+  trackAnalyticsEvent: (eventData) =>
+    request("/analytics/event", {
+      method: "POST",
+      body: JSON.stringify(eventData),
+    }),
+
+  getAnalyticsDashboard: () =>
+    request("/analytics/dashboard"),
 };

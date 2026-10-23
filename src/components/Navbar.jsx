@@ -15,11 +15,12 @@ import {
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import WeatherBadge from "./WeatherBadge";
+import SearchAutocomplete from "./SearchAutocomplete";
 
 export default function Navbar() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { cartCount } = useCart();
+  const { cartCount, openDrawer } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
 
   const closeMenu = () => setMobileMenu(false);
@@ -82,12 +83,12 @@ export default function Navbar() {
                   Recommendations
                 </a>
 
-                <a
-                  href="/#how-it-works"
+                <Link
+                  to="/blog"
                   className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-950"
                 >
-                  How It Works
-                </a>
+                  Blog & Guides
+                </Link>
               </div>
 
               {/* RIGHT ACTIONS */}
@@ -108,16 +109,18 @@ export default function Navbar() {
                 </button>
 
                 {/* Wishlist */}
-                <button
+                <Link
+                  to="/wishlist"
                   aria-label="Wishlist"
                   className="hidden rounded-full p-2.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:flex"
                 >
                   <Heart size={19} />
-                </button>
+                </Link>
 
                 {/* Cart */}
-                <Link
-                  to="/cart"
+                <button
+                  type="button"
+                  onClick={openDrawer}
                   className="relative flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-slate-100"
                   aria-label="Shopping cart"
                 >
@@ -128,7 +131,7 @@ export default function Navbar() {
                       {cartCount > 99 ? "99+" : cartCount}
                     </span>
                   )}
-                </Link>
+                </button>
 
                 {/* User / Auth */}
                 {isAuthenticated ? (
@@ -188,22 +191,14 @@ export default function Navbar() {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden border-t border-slate-100"
+                  className="overflow-visible border-t border-slate-100"
                 >
-                  <div className="p-3 sm:p-4">
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <Search size={18} className="text-slate-400" />
-
-                      <input
-                        type="text"
-                        placeholder="Search products..."
-                        className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
-                      />
-
-                      <kbd className="hidden rounded-md border bg-white px-2 py-1 text-[10px] text-slate-400 sm:block">
-                        ESC
-                      </kbd>
-                    </div>
+                  <div className="p-3 sm:p-4 max-w-3xl mx-auto">
+                    <SearchAutocomplete
+                      autoFocus
+                      onSelect={() => setSearchOpen(false)}
+                      placeholder="Search jackets, umbrella, waterproof shoes, brands..."
+                    />
                   </div>
                 </motion.div>
               )}
@@ -235,7 +230,7 @@ export default function Navbar() {
                 stiffness: 350,
                 damping: 32,
               }}
-              className="fixed right-0 top-0 z-50 h-full w-[85%] max-w-sm bg-white p-5 shadow-2xl sm:hidden"
+              className="fixed right-0 top-0 z-50 h-full w-[85%] max-w-sm bg-white p-5 shadow-2xl overflow-y-auto sm:hidden"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -256,13 +251,11 @@ export default function Navbar() {
                 </button>
               </div>
 
-              {/* Mobile Search */}
-              <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <Search size={18} className="text-slate-400" />
-
-                <input
+              {/* Mobile Search Autocomplete */}
+              <div className="mt-5">
+                <SearchAutocomplete
+                  onSelect={() => setMobileMenu(false)}
                   placeholder="Search products..."
-                  className="w-full bg-transparent text-sm outline-none"
                 />
               </div>
 
@@ -292,13 +285,13 @@ export default function Navbar() {
                   Recommendations
                 </a>
 
-                <a
-                  href="/#how-it-works"
+                <Link
+                  to="/blog"
                   onClick={closeMenu}
                   className="block rounded-xl px-4 py-3.5 text-base font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
                 >
-                  How It Works
-                </a>
+                  Blog & Guides
+                </Link>
               </div>
 
               {/* Location & Weather */}

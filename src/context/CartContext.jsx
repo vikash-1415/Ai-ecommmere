@@ -5,8 +5,13 @@ import {
   useMemo,
   useState,
 } from "react";
+import { behaviorApi } from "../services/behaviorApi";
+import { analytics } from "../services/analyticsTracker";
+import CartDrawer from "../components/CartDrawer";
 
 const CartContext = createContext();
+
+const getProductKey = (product) => product.id ?? product._id;
 
 export function CartProvider({ children }) {
   const [cart, setCart] = useState(() => {
@@ -27,6 +32,8 @@ export function CartProvider({ children }) {
     }
   });
 
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   useEffect(() => {
     localStorage.setItem("weathercart", JSON.stringify(cart));
   }, [cart]);
@@ -38,15 +45,20 @@ export function CartProvider({ children }) {
     );
   }, [wishlist]);
 
-  const addToCart = (product, quantity = 1) => {
+  const openDrawer = () => setIsDrawerOpen(true);
+  const closeDrawer = () => setIsDrawerOpen(false);
+
+  const addToCart = (product, quantity = 1, showDrawer = true) => {
+    behaviorApi.cartAdd(product._id || product.id);
+    analytics.trackCartAdd(product, quantity);
     setCart((current) => {
       const existing = current.find(
-        (item) => item.id === product.id
+        (item) => getProductKey(item) === getProductKey(product)
       );
 
       if (existing) {
         return current.map((item) =>
-          item.id === product.id
+          getProductKey(item) === getProductKey(product)
             ? {
                 ...item,
                 quantity: item.quantity + quantity,
@@ -63,11 +75,15 @@ export function CartProvider({ children }) {
         },
       ];
     });
+
+    if (showDrawer) {
+      setIsDrawerOpen(true);
+    }
   };
 
   const removeFromCart = (id) => {
     setCart((current) =>
-      current.filter((item) => item.id !== id)
+      current.filter((item) => getProductKey(item) !== id)
     );
   };
 
@@ -79,7 +95,7 @@ export function CartProvider({ children }) {
 
     setCart((current) =>
       current.map((item) =>
-        item.id === id
+        getProductKey(item) === id
           ? { ...item, quantity }
           : item
       )
@@ -93,12 +109,12 @@ export function CartProvider({ children }) {
   const toggleWishlist = (product) => {
     setWishlist((current) => {
       const exists = current.some(
-        (item) => item.id === product.id
+        (item) => getProductKey(item) === getProductKey(product)
       );
 
       if (exists) {
         return current.filter(
-          (item) => item.id !== product.id
+          (item) => getProductKey(item) !== getProductKey(product)
         );
       }
 
@@ -107,7 +123,7 @@ export function CartProvider({ children }) {
   };
 
   const isWishlisted = (id) => {
-    return wishlist.some((item) => item.id === id);
+    return wishlist.some((item) => getProductKey(item) === id);
   };
 
   const cartCount = useMemo(
@@ -130,7 +146,6 @@ export function CartProvider({ children }) {
   );
 
   const shipping = subtotal >= 999 || subtotal === 0 ? 0 : 79;
-
   const total = subtotal + shipping;
 
   return (
@@ -142,6 +157,9 @@ export function CartProvider({ children }) {
         subtotal,
         shipping,
         total,
+        isDrawerOpen,
+        openDrawer,
+        closeDrawer,
         addToCart,
         removeFromCart,
         updateQuantity,
@@ -151,6 +169,7 @@ export function CartProvider({ children }) {
       }}
     >
       {children}
+      <CartDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
     </CartContext.Provider>
   );
 }

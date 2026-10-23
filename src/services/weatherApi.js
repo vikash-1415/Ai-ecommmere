@@ -75,3 +75,20 @@ export async function fetchPersonalizedRecommendations(weather) {
     return fetchRecommendations(weather);
   }
 }
+
+async function fetchProductRecommendations(productId, type) {
+  const response = await fetch(
+    `${API_URL}/recommendations/${encodeURIComponent(productId)}/${type}`
+  );
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Unable to load product recommendations");
+  }
+  return data;
+}
+
+export const fetchSimilarProducts = (productId) =>
+  fetchProductRecommendations(productId, "similar");
+
+export const fetchFrequentlyBoughtTogether = (productId) =>
+  fetchProductRecommendations(productId, "frequently-bought-together");

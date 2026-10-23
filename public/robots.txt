@@ -1,0 +1,27 @@
+# WeatherCart Robots.txt
+User-agent: *
+Allow: /
+Allow: /products
+Allow: /products/*
+Allow: /blog
+Allow: /blog/*
+Allow: /faq
+Allow: /about
+Allow: /contact
+Allow: /shipping
+Allow: /returns
+Allow: /privacy
+Allow: /terms
+Allow: /accessibility
+Allow: /recommendations-disclosure
+
+# Disallow private user states and checkout tunnels
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /checkout
+Disallow: /order-success/*
+Disallow: /orders
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://weathercart.example.com/sitemap.xml
