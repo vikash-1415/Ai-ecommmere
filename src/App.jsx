@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import VerifyEmail from "./pages/VerifyEmail";
 import Orders from "./pages/Orders";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
+import Success from "./pages/Success";
 import Wishlist from "./pages/Wishlist";
 
 // Blog & CMS
@@ -35,6 +36,7 @@ import NotFound from "./pages/Legal/NotFound";
 // Global Overlay Components
 import CartDrawer from "./components/CartDrawer";
 import CookieConsentBanner from "./components/CookieConsentBanner";
+import RequireAdmin from "./components/RequireAdmin";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -85,10 +87,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/success" element={<Success />} />
 
         {/* Admin */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/*" element={<AdminDashboard />} />
+        <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="/admin/*" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
 
         {/* 404 Catch-All */}
         <Route path="/404" element={<NotFound />} />

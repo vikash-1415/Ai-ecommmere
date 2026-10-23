@@ -7,7 +7,7 @@ import {
   AlertTriangle, ArrowUpRight, ArrowDownRight, RefreshCw,
   LogOut, Menu, Sparkles, Eye, BarChart2, CloudRain, Sun,
   Snowflake, Wind, Star, BoxSelect, Activity, Download,
-  ArrowRight, Zap, Target, CheckCircle2, ShoppingCart,
+  ArrowRight, Zap, Target, CheckCircle2, ShoppingCart, ChevronDown,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { API_URL } from "../../services/apiBaseUrl";
@@ -78,10 +78,29 @@ function WeatherAnalytics() {
   );
 }
 
-const revData = [18, 22, 17, 31, 28, 35, 42, 38, 44, 48, 52, 58];
-function RevenueChart() {
-  const max = Math.max(...revData), w = 280, h = 80, pad = 4;
-  const pts = revData.map((v, i) => `${pad + (i / (revData.length - 1)) * (w - pad * 2)},${h - pad - ((v / max) * (h - pad * 2))}`).join(" ");
+function RevenueChart({ monthlyRevenue = [], totalRevenue = 0 }) {
+  const data = monthlyRevenue.length > 0
+    ? monthlyRevenue.map(m => m.revenue)
+    : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const labels = monthlyRevenue.length > 0
+    ? monthlyRevenue.map(m => m.label)
+    : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const max = Math.max(...data, 1);
+  const w = 280, h = 80, pad = 4;
+  const pts = data.map((v, i) => `${pad + (i / (data.length - 1)) * (w - pad * 2)},${h - pad - ((v / max) * (h - pad * 2))}`).join(" ");
+
+  // Format revenue display
+  const fmtRevenue = (v) => {
+    if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+    if (v >= 1000) return `₹${(v / 1000).toFixed(1)}K`;
+    return `₹${v}`;
+  };
+
+  // Month-over-month change
+  const lastMonth = data[data.length - 1] || 0;
+  const prevMonth = data[data.length - 2] || 0;
+  const momChange = prevMonth > 0 ? (((lastMonth - prevMonth) / prevMonth) * 100).toFixed(1) : 0;
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
       <div className="flex items-center justify-between mb-1">
@@ -90,9 +109,10 @@ function RevenueChart() {
           <p className="text-xs text-slate-500">Last 12 months trend</p>
         </div>
         <div className="text-right">
-          <p className="text-xl font-extrabold text-slate-900">Rs.4.2L</p>
-          <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-0.5 justify-end">
-            <ArrowUpRight size={12} /> +18.4% MoM
+          <p className="text-xl font-extrabold text-slate-900">{fmtRevenue(totalRevenue)}</p>
+          <p className={`text-[11px] font-semibold flex items-center gap-0.5 justify-end ${Number(momChange) >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
+            {Number(momChange) >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {momChange > 0 ? "+" : ""}{momChange}% MoM
           </p>
         </div>
       </div>
@@ -107,7 +127,7 @@ function RevenueChart() {
         <polygon fill="url(#rg)" points={`${pad},${h} ${pts} ${w - pad},${h}`} />
       </svg>
       <div className="flex justify-between text-[9px] text-slate-400 mt-1">
-        {["Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep"].map(m => <span key={m}>{m}</span>)}
+        {labels.map(m => <span key={m}>{m}</span>)}
       </div>
     </div>
   );
@@ -278,16 +298,29 @@ function DeleteModal({ product, onClose, onConfirm, loading }) {
   );
 }
 
-function OverviewTab({ stats, orders, onTabChange }) {
+function OverviewTab({ stats, orders, onTabChange, adminStats }) {
+  const fmtRevenue = (v) => {
+    if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+    if (v >= 1000) return `₹${(v / 1000).toFixed(1)}K`;
+    return `₹${v}`;
+  };
+  const totalRevenue = adminStats?.totalRevenue || orders.reduce((s, o) => s + (o.total || o.totalAmount || 0), 0);
+  const totalUsers = adminStats?.totalUsers || 0;
+  const fulfillmentRate = adminStats?.fulfillmentRate || 0;
+  const monthlyRevenue = adminStats?.monthlyRevenue || [];
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={TrendingUp} label="Total Revenue" value="Rs.4.2L" sub="+18.4% this month" color="bg-blue-50 text-blue-600" trend={1} />
-        <StatCard icon={ShoppingBag} label="Total Orders" value={stats.orders} sub="94% fulfillment" color="bg-violet-50 text-violet-600" trend={1} />
-        <StatCard icon={Users} label="Active Users" value={stats.users} sub="+9.2% geo-located" color="bg-emerald-50 text-emerald-600" trend={1} />
+        <StatCard icon={TrendingUp} label="Total Revenue" value={fmtRevenue(totalRevenue)} sub={totalRevenue > 0 ? "from real orders" : "no orders yet"} color="bg-blue-50 text-blue-600" trend={totalRevenue > 0 ? 1 : 0} />
+        <StatCard icon={ShoppingBag} label="Total Orders" value={stats.orders} sub={`${fulfillmentRate}% fulfillment`} color="bg-violet-50 text-violet-600" trend={1} />
+        <StatCard icon={Users} label="Registered Users" value={totalUsers.toLocaleString("en-IN")} sub={totalUsers > 0 ? "verified accounts" : "no users yet"} color="bg-emerald-50 text-emerald-600" trend={totalUsers > 0 ? 1 : 0} />
         <StatCard icon={Package} label="Products" value={stats.products} sub={`${stats.lowStock} low stock`} color="bg-amber-50 text-amber-600" trend={stats.lowStock > 5 ? -1 : 1} />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><RevenueChart /><WeatherAnalytics /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RevenueChart monthlyRevenue={monthlyRevenue} totalRevenue={totalRevenue} />
+        <WeatherAnalytics />
+      </div>
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-2 mb-5">
           <Sparkles size={18} className="text-amber-400" />
@@ -298,7 +331,7 @@ function OverviewTab({ stats, orders, onTabChange }) {
             { label: "Recs Shown", value: "12,482", icon: Eye },
             { label: "Product Clicks", value: "3,821", icon: BarChart2 },
             { label: "Added to Cart", value: "1,247", icon: Package },
-            { label: "Purchases", value: "428", icon: Check },
+            { label: "Purchases", value: stats.orders, icon: Check },
           ].map((m, i) => (
             <div key={i} className="bg-white/10 rounded-xl p-4 text-center backdrop-blur-sm">
               <m.icon size={18} className="text-blue-400 mx-auto mb-2" />
@@ -310,7 +343,7 @@ function OverviewTab({ stats, orders, onTabChange }) {
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-400">
           <span>CTR: <strong className="text-emerald-400">30.6%</strong></span>
           <span>Cart Conversion: <strong className="text-emerald-400">32.6%</strong></span>
-          <span>Purchase Conversion: <strong className="text-emerald-400">11.2%</strong></span>
+          <span>Purchase Conversion: <strong className="text-emerald-400">{stats.orders > 0 ? ((stats.orders / 1247) * 100).toFixed(1) : 0}%</strong></span>
         </div>
       </div>
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -319,18 +352,21 @@ function OverviewTab({ stats, orders, onTabChange }) {
           <button onClick={() => onTabChange("orders")} className="text-xs font-semibold text-blue-600 hover:underline">View All</button>
         </div>
         <div className="space-y-2">
-          {orders.slice(0, 5).map((ord, i) => (
-            <div key={ord._id || i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-              <div>
-                <span className="font-bold text-slate-900">{ord.orderNumber || ord._id}</span>
-                <p className="text-slate-500 mt-0.5">{ord.user?.name || "Customer"} - {ord.items?.length || 0} items</p>
+          {orders.slice(0, 5).map((ord, i) => {
+            const total = ord.total ?? ord.totalAmount ?? 0;
+            return (
+              <div key={ord._id || i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                <div>
+                  <span className="font-bold text-slate-900">{ord.orderNumber || ord._id}</span>
+                  <p className="text-slate-500 mt-0.5">{ord.user?.name || "Customer"} - {ord.items?.length || 0} items</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-slate-900">₹{total > 0 ? total.toLocaleString("en-IN") : "-"}</p>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold mt-1 ${STATUS_COLORS[ord.status] || "bg-slate-100 text-slate-600"}`}>{ord.status}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-slate-900">Rs.{ord.totalAmount?.toLocaleString() || "-"}</p>
-                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold mt-1 ${STATUS_COLORS[ord.status] || "bg-slate-100 text-slate-600"}`}>{ord.status}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {orders.length === 0 && <p className="text-xs text-slate-400 text-center py-6">No orders yet.</p>}
         </div>
       </div>
@@ -419,8 +455,59 @@ function ProductsTab({ products, onAdd, onEdit, onDelete }) {
   );
 }
 
+function StatusDropdown({ value, onChange, disabled, loading }) {
+  const [open, setOpen] = useState(false);
+  const statusMeta = {
+    pending:    { color: "bg-amber-100 text-amber-800",   dot: "bg-amber-500" },
+    confirmed:  { color: "bg-blue-100 text-blue-800",    dot: "bg-blue-500" },
+    processing: { color: "bg-violet-100 text-violet-800",dot: "bg-violet-500" },
+    shipped:    { color: "bg-cyan-100 text-cyan-800",    dot: "bg-cyan-500" },
+    delivered:  { color: "bg-emerald-100 text-emerald-800",dot: "bg-emerald-500" },
+    cancelled:  { color: "bg-rose-100 text-rose-800",   dot: "bg-rose-500" },
+  };
+  const cur = statusMeta[value] || { color: "bg-slate-100 text-slate-700", dot: "bg-slate-400" };
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={disabled || value === "cancelled"}
+        onClick={() => setOpen(o => !o)}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition
+          ${cur.color} border-transparent hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${cur.dot}`} />
+        <span className="capitalize">{value}</span>
+        {loading ? <RefreshCw size={11} className="animate-spin" /> : <ChevronDown size={11} />}
+      </button>
+      {open && !disabled && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-20 bg-white rounded-xl shadow-xl border border-slate-100 min-w-[130px] overflow-hidden">
+            {ORDER_STATUSES.map(s => {
+              const m = statusMeta[s] || { color: "", dot: "bg-slate-400" };
+              return (
+                <button
+                  key={s}
+                  onClick={() => { onChange(s); setOpen(false); }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold hover:bg-slate-50 transition capitalize ${
+                    s === value ? "bg-slate-50 font-bold" : "text-slate-700"
+                  }`}
+                >
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${m.dot}`} />
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function OrdersTab({ orders, onStatusChange }) {
   const [search, setSearch] = useState(""), [statusFilter, setStatusFilter] = useState("all"), [updating, setUpdating] = useState(null);
+  const [expanded, setExpanded] = useState(null);
   const filtered = orders.filter(o => {
     const ms = (o.orderNumber || o._id || "").toLowerCase().includes(search.toLowerCase()) || (o.user?.name || "").toLowerCase().includes(search.toLowerCase());
     return ms && (statusFilter === "all" || o.status === statusFilter);
@@ -452,35 +539,83 @@ function OrdersTab({ orders, onStatusChange }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map(ord => (
-              <tr key={ord._id} className="hover:bg-slate-50/60 transition">
-                <td className="py-3.5 px-4 font-bold text-slate-900 text-[11px]">{ord.orderNumber || ord._id?.slice(-8)}</td>
-                <td className="py-3.5 px-4">
-                  <p className="font-semibold text-slate-800">{ord.user?.name || "-"}</p>
-                  <p className="text-slate-400 text-[10px]">{ord.user?.email || ""}</p>
-                </td>
-                <td className="py-3.5 px-4 font-bold text-slate-900">Rs.{ord.totalAmount?.toLocaleString() || "-"}</td>
-                <td className="py-3.5 px-4">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ord.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {ord.paymentStatus || "pending"}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4">
-                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[ord.status] || "bg-slate-100 text-slate-600"}`}>{ord.status}</span>
-                </td>
-                <td className="py-3.5 px-4">
-                  <div className="relative">
-                    <select value={ord.status} onChange={e => handleStatus(ord._id, e.target.value)}
-                      disabled={updating === ord._id || ord.status === "cancelled"}
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] focus:outline-none disabled:opacity-50 cursor-pointer">
-                      {ORDER_STATUSES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
-                    </select>
-                    {updating === ord._id && <RefreshCw size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 animate-spin" />}
-                  </div>
-                </td>
-                <td className="py-3.5 px-4 text-slate-400 text-[10px]">{ord.createdAt ? new Date(ord.createdAt).toLocaleDateString("en-IN") : "-"}</td>
-              </tr>
-            ))}
+            {filtered.map(ord => {
+              const total = ord.total ?? ord.totalAmount ?? ord.totalPrice ?? 0;
+              const isExpanded = expanded === ord._id;
+              return (
+                <>
+                  <tr key={ord._id} className={`hover:bg-slate-50/60 transition cursor-pointer ${isExpanded ? "bg-blue-50/40" : ""}`}
+                    onClick={() => setExpanded(isExpanded ? null : ord._id)}>
+                    <td className="py-3.5 px-4 font-bold text-blue-700 text-[11px]">
+                      <span className="flex items-center gap-1">
+                        <ChevronDown size={12} className={`transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                        {ord.orderNumber || ord._id?.slice(-8)}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <p className="font-semibold text-slate-800">{ord.user?.name || "-"}</p>
+                      <p className="text-slate-400 text-[10px]">{ord.user?.email || ""}</p>
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-slate-900">
+                      ₹{total > 0 ? total.toLocaleString("en-IN") : "-"}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ord.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                        {ord.paymentStatus || "pending"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+                      <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[ord.status] || "bg-slate-100 text-slate-600"}`}>{ord.status}</span>
+                    </td>
+                    <td className="py-3.5 px-4" onClick={e => e.stopPropagation()}>
+                      <StatusDropdown
+                        value={ord.status}
+                        onChange={s => handleStatus(ord._id, s)}
+                        disabled={updating !== null}
+                        loading={updating === ord._id}
+                      />
+                    </td>
+                    <td className="py-3.5 px-4 text-slate-400 text-[10px]">{ord.createdAt ? new Date(ord.createdAt).toLocaleDateString("en-IN") : "-"}</td>
+                  </tr>
+                  {isExpanded && (
+                    <tr key={ord._id + "-detail"}>
+                      <td colSpan={7} className="bg-blue-50/30 px-6 py-4 border-b border-blue-100">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Order Items</p>
+                            <div className="space-y-2">
+                              {(ord.items || []).map((item, i) => (
+                                <div key={i} className="flex items-center gap-3 bg-white rounded-xl p-2.5 border border-slate-100">
+                                  {item.image && <img src={item.image} alt={item.name} className="h-9 w-9 rounded-lg object-cover border border-slate-200" />}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-slate-800 truncate">{item.name}</p>
+                                    <p className="text-[10px] text-slate-500">Qty: {item.quantity} × ₹{item.price?.toLocaleString("en-IN")}</p>
+                                  </div>
+                                  <p className="text-xs font-bold text-slate-900">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Delivery Address</p>
+                            <div className="bg-white rounded-xl p-3 border border-slate-100 text-xs text-slate-700 space-y-1">
+                              <p className="font-semibold">{ord.shippingAddress?.fullName}</p>
+                              <p>{ord.shippingAddress?.address}</p>
+                              <p>{ord.shippingAddress?.city}, {ord.shippingAddress?.state} - {ord.shippingAddress?.pincode}</p>
+                              <p>{ord.shippingAddress?.phone}</p>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between bg-white rounded-xl px-4 py-2.5 border border-slate-100">
+                              <span className="text-xs text-slate-500">Order Total</span>
+                              <span className="text-sm font-extrabold text-slate-900">₹{total.toLocaleString("en-IN")}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
           </tbody>
         </table>
         {filtered.length === 0 && <div className="py-16 text-center text-slate-400"><ShoppingBag size={32} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No orders found.</p></div>}
@@ -872,6 +1007,22 @@ export default function AdminDashboard() {
 
   useEffect(() => { loadProducts(); loadOrders(); }, [loadProducts, loadOrders]);
 
+  // Fetch real admin stats
+  useEffect(() => {
+    async function loadAdminStats() {
+      try {
+        const r = await fetch(`${API_URL}/analytics/admin-stats`, { headers: authHeaders() });
+        if (r.ok) {
+          const d = await r.json();
+          if (d.success) setAdminStats(d);
+        }
+      } catch (e) {
+        console.error("Failed to load admin stats", e);
+      }
+    }
+    loadAdminStats();
+  }, [orders.length]); // reload when orders change
+
   const saveProduct = async (data) => {
     setMloading(true);
     const isEdit = Boolean(data._id);
@@ -905,55 +1056,105 @@ export default function AdminDashboard() {
     } catch { toast("Failed to update order", "error"); }
   };
 
-  const stats = { products: products.length, orders: orders.length, users: "1,245", lowStock: products.filter(p => (p.stock ?? 0) <= 5).length };
+  const [adminStats, setAdminStats] = useState(null);
+
+  const stats = { products: products.length, orders: orders.length, users: adminStats?.totalUsers || 0, lowStock: products.filter(p => (p.stock ?? 0) <= 5).length };
   const isLoading = lprod || lord;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {sidebar && <div className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden" onClick={() => setSidebar(false)} />}
-      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-slate-900 text-white flex flex-col transform transition-transform duration-300 ${sidebar ? "translate-x-0" : "-translate-x-full"} lg:relative lg:translate-x-0`}>
-        <div className="px-6 py-5 border-b border-white/10">
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
+      {/* Mobile overlay */}
+      {sidebar && <div className="fixed inset-0 z-40 bg-slate-900/60 lg:hidden" onClick={() => setSidebar(false)} />}
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          ${sidebar ? "translate-x-0" : "-translate-x-full"}
+          lg:relative lg:translate-x-0 lg:shrink-0
+        `}
+      >
+        {/* Logo */}
+        <div className="px-6 py-5 border-b border-white/10 shrink-0">
           <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center"><CloudRain size={16} className="text-white" /></div>
+            <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center">
+              <CloudRain size={16} className="text-white" />
+            </div>
             <span className="font-extrabold text-sm">WeatherCart Admin</span>
           </Link>
         </div>
-        <nav className="flex-1 px-4 py-5 space-y-1">
+
+        {/* Nav links */}
+        <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
           {NAV.map(item => (
-            <button key={item.key} onClick={() => { setTab(item.key); setSidebar(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${tab === item.key ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}>
-              <item.icon size={17} />{item.label}
+            <button
+              key={item.key}
+              onClick={() => { setTab(item.key); setSidebar(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${
+                tab === item.key ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon size={17} />
+              {item.label}
               {item.key === "inventory" && stats.lowStock > 0 && (
-                <span className="ml-auto bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">{stats.lowStock}</span>
+                <span className="ml-auto bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  {stats.lowStock}
+                </span>
               )}
             </button>
           ))}
         </nav>
-        <div className="px-4 py-4 border-t border-white/10">
+
+        {/* User profile */}
+        <div className="px-4 py-4 border-t border-white/10 shrink-0">
           <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5">
-            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">{user?.name?.[0]?.toUpperCase() || "A"}</div>
+            <div className="h-8 w-8 shrink-0 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold">
+              {user?.name?.[0]?.toUpperCase() || "A"}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white truncate">{user?.name || "Admin"}</p>
               <p className="text-[10px] text-slate-400 truncate">{user?.email || ""}</p>
             </div>
-            <button onClick={() => { logout(); navigate("/login"); }} className="p-1 text-slate-400 hover:text-white transition"><LogOut size={15} /></button>
+            <button
+              onClick={() => { logout(); navigate("/login"); }}
+              className="p-1 text-slate-400 hover:text-white transition shrink-0"
+            >
+              <LogOut size={15} />
+            </button>
           </div>
         </div>
       </aside>
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-4 shadow-sm">
-          <button onClick={() => setSidebar(true)} className="lg:hidden p-2 rounded-xl hover:bg-slate-100 transition"><Menu size={20} /></button>
-          <div className="flex-1"><h1 className="text-sm font-bold text-slate-900 capitalize">{tab}</h1></div>
+      {/* Main content column */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        {/* Top header */}
+        <header className="shrink-0 z-30 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-2 sm:gap-4 shadow-sm">
+          <button
+            onClick={() => setSidebar(true)}
+            className="lg:hidden p-2 rounded-xl hover:bg-slate-100 transition"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-bold text-slate-900 capitalize truncate">{tab}</h1>
+          </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { loadProducts(); loadOrders(); }} className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-500">
+            <button
+              onClick={() => { loadProducts(); loadOrders(); }}
+              className="p-2 rounded-xl hover:bg-slate-100 transition text-slate-500"
+            >
               <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
             </button>
-            <Link to="/" className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition">
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition"
+            >
               <Eye size={14} /> View Site
             </Link>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -964,7 +1165,7 @@ export default function AdminDashboard() {
           ) : (
             <AnimatePresence mode="wait">
               <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                {tab === "overview" && <OverviewTab stats={stats} orders={orders} onTabChange={setTab} />}
+                {tab === "overview" && <OverviewTab stats={stats} orders={orders} onTabChange={setTab} adminStats={adminStats} />}
                 {tab === "products" && <ProductsTab products={products} onAdd={() => setProdModal("add")} onEdit={p => setProdModal(p)} onDelete={p => setDelTarget(p)} />}
                 {tab === "orders" && <OrdersTab orders={orders} onStatusChange={updateOrderStatus} />}
                 {tab === "inventory" && <InventoryTab products={products} />}

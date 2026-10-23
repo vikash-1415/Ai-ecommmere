@@ -31,9 +31,10 @@ export default function Login() {
       setVerificationMessage("");
       setEmailNotVerified(false);
 
-      await login(email, password);
+      const data = await login(email, password);
 
-      const redirect = location.state?.from || "/";
+      const isAdmin = data?.user?.role === "admin" || data?.user?.role === "superadmin";
+      const redirect = location.state?.from || (isAdmin ? "/admin" : "/");
 
       navigate(redirect);
     } catch (error) {

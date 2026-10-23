@@ -11,6 +11,7 @@ import {
   MapPin,
   Sparkles,
   ShoppingCart,
+  Shield,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
@@ -148,6 +149,15 @@ export default function Navbar() {
                         <p className="font-bold text-slate-900 truncate">{user?.name}</p>
                         <p className="text-[10px] text-slate-500 capitalize">{user?.role}</p>
                       </div>
+                      {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center gap-2 mt-1 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          <Shield size={13} />
+                          Admin Dashboard
+                        </Link>
+                      )}
                       <Link
                         to="/orders"
                         className="block mt-1 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
@@ -308,6 +318,16 @@ export default function Navbar() {
                       <p className="font-bold text-slate-900">{user?.name}</p>
                       <p className="text-slate-500 capitalize">{user?.role} • {user?.email}</p>
                     </div>
+                    {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                      <Link
+                        to="/admin"
+                        onClick={closeMenu}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                      >
+                        <Shield size={16} />
+                        Admin Dashboard
+                      </Link>
+                    )}
                     <Link
                       to="/orders"
                       onClick={closeMenu}

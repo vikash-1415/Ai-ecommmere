@@ -44,9 +44,28 @@ export default function Register() {
         form.password
       );
 
-      navigate("/login", {
-        state: { message: result.message },
-      });
+      // Always navigate to verify-email after account creation
+      // (whether email sent successfully or not)
+      if (result.verificationRequired) {
+        if (result.emailSendFailed) {
+          // Email send failed – go to verify-email with warning
+          navigate("/verify-email", {
+            state: {
+              email: result.email || form.email,
+              message: result.message,
+              emailSendFailed: true,
+            },
+          });
+        } else {
+          // Email sent successfully – show success page
+          navigate("/success", {
+            state: { email: result.email || form.email, message: result.message },
+          });
+        }
+      } else {
+        // Email verification disabled — go to login directly
+        navigate("/login", { state: { message: result.message } });
+      }
     } catch (error) {
       setError(error.message);
     } finally {
