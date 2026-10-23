@@ -153,6 +153,15 @@ export default function Login() {
                 </div>
               </label>
 
+              <div className="flex items-center justify-end -mt-1">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-semibold text-blue-600 transition hover:text-blue-700 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
               <button
                 disabled={submitting}
                 className="w-full rounded-xl bg-slate-950 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"

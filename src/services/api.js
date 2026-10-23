@@ -58,6 +58,18 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
+  forgotPassword: (email) =>
+    request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (email, token, password) =>
+    request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, token, password }),
+    }),
+
   getCart: () =>
     request("/cart"),
 
