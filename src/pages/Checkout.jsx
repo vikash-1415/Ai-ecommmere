@@ -32,7 +32,7 @@ const PRESET_COUPONS = [
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, resendVerificationEmail } = useAuth();
   const { cart, subtotal, clearCart } = useCart();
 
   // Address State
@@ -67,6 +67,19 @@ export default function Checkout() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [verificationNotice, setVerificationNotice] = useState("");
+
+  const emailVerificationRequired =
+    user?.emailVerificationRequired && !user?.emailVerified;
+
+  const handleResendVerification = async () => {
+    try {
+      const result = await resendVerificationEmail(user.email);
+      setVerificationNotice(result.message);
+    } catch (requestError) {
+      setVerificationNotice(requestError.message);
+    }
+  };
 
   // Save address on change
   useEffect(() => {
@@ -174,6 +187,11 @@ export default function Checkout() {
 
     if (!isAuthenticated) {
       navigate("/login", { state: { from: "/checkout" } });
+      return;
+    }
+
+    if (emailVerificationRequired) {
+      setError("Verify your email before placing an order.");
       return;
     }
 
@@ -295,6 +313,25 @@ export default function Checkout() {
               >
                 Sign In to Continue
               </Link>
+            </div>
+          )}
+
+          {emailVerificationRequired && (
+            <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-bold">Verify your email before checkout</p>
+              <p className="mt-1 text-xs">
+                Check {user.email} for a verification link.
+              </p>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                className="mt-3 text-xs font-bold underline"
+              >
+                Resend verification email
+              </button>
+              {verificationNotice && (
+                <p className="mt-2 text-xs">{verificationNotice}</p>
+              )}
             </div>
           )}
 

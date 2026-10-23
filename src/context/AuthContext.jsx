@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 import { API_URL } from "../services/apiBaseUrl";
+import { api } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -78,9 +79,11 @@ export function AuthProvider({ children }) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(
+      const error = new Error(
         data.message || "Login failed"
       );
+      error.code = data.code;
+      throw error;
     }
 
     localStorage.setItem(
@@ -118,22 +121,19 @@ export function AuthProvider({ children }) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(
+      const error = new Error(
         data.message ||
           "Registration failed"
       );
+      error.code = data.code;
+      throw error;
     }
-
-    localStorage.setItem(
-      "weathercart-token",
-      data.token
-    );
-
-    setToken(data.token);
-    setUser(data.user);
 
     return data;
   };
+
+  const resendVerificationEmail = (email) =>
+    api.resendVerificationEmail(email);
 
   const logout = () => {
     localStorage.removeItem(
@@ -153,6 +153,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
+        resendVerificationEmail,
         isAuthenticated: Boolean(user),
         isAdmin:
           user?.role === "admin",

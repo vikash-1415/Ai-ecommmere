@@ -5,23 +5,53 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useAuth } from "./AuthContext";
 import { behaviorApi } from "../services/behaviorApi";
 import { analytics } from "../services/analyticsTracker";
+import { api } from "../services/api";
 import CartDrawer from "../components/CartDrawer";
 
 const CartContext = createContext();
 
 const getProductKey = (product) => product.id ?? product._id;
+const GUEST_CART_KEY = "weathercart";
+
+function getUserCartKey(userId) {
+  return `weathercart-user-${userId}`;
+}
+
+function readCart(key) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeCartItems(...cartLists) {
+  const merged = new Map();
+
+  for (const item of cartLists.flat()) {
+    const key = getProductKey(item);
+    if (!key) continue;
+
+    const existing = merged.get(String(key));
+    if (!existing) {
+      merged.set(String(key), { ...item });
+    } else if (Number(item.quantity) > Number(existing.quantity)) {
+      merged.set(String(key), { ...existing, ...item });
+    }
+  }
+
+  return [...merged.values()];
+}
 
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState(() => {
-    try {
-      const saved = localStorage.getItem("weathercart");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { user, token, loading: authLoading } = useAuth();
+  const userId = user?.id || user?._id || null;
+  const [cart, setCart] = useState(() => readCart(GUEST_CART_KEY));
+  const [hydratedOwnerId, setHydratedOwnerId] = useState(undefined);
 
   const [wishlist, setWishlist] = useState(() => {
     try {
@@ -35,8 +65,81 @@ export function CartProvider({ children }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem("weathercart", JSON.stringify(cart));
-  }, [cart]);
+    if (authLoading) return undefined;
+
+    let cancelled = false;
+    setHydratedOwnerId(undefined);
+
+    if (!userId) {
+      setCart(readCart(GUEST_CART_KEY));
+      setHydratedOwnerId(null);
+      return undefined;
+    }
+
+    const guestCart = readCart(GUEST_CART_KEY);
+    const cachedUserCart = readCart(getUserCartKey(userId));
+    setCart([]);
+
+    async function loadUserCart() {
+      try {
+        const result = await api.getCart();
+        const mergedCart = mergeCartItems(
+          result.items || [],
+          cachedUserCart,
+          guestCart
+        );
+        if (
+          cachedUserCart.length > 0 ||
+          guestCart.length > 0
+        ) {
+          await api.saveCart(mergedCart);
+        }
+        if (!cancelled) {
+          localStorage.removeItem(GUEST_CART_KEY);
+          setCart(mergedCart);
+        }
+      } catch (error) {
+        console.error("Could not load account cart:", error);
+        if (!cancelled) {
+          setCart(mergeCartItems(cachedUserCart, guestCart));
+        }
+      } finally {
+        if (!cancelled) setHydratedOwnerId(userId);
+      }
+    }
+
+    loadUserCart();
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, token, userId]);
+
+  useEffect(() => {
+    if (authLoading || hydratedOwnerId !== userId) return undefined;
+
+    const storageKey = userId
+      ? getUserCartKey(userId)
+      : GUEST_CART_KEY;
+    localStorage.setItem(storageKey, JSON.stringify(cart));
+
+    if (!userId || !token) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      api.saveCart(
+        cart.map((item) => ({
+          productId: getProductKey(item),
+          name: item.name,
+          image: item.image,
+          price: item.price,
+          quantity: item.quantity,
+        }))
+      ).catch((error) => {
+        console.error("Could not sync account cart:", error);
+      });
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [authLoading, cart, hydratedOwnerId, token, userId]);
 
   useEffect(() => {
     localStorage.setItem(

@@ -34,16 +34,39 @@ async function request(
     await response.json();
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data.message ||
         "Something went wrong"
     );
+    error.code = data.code;
+    throw error;
   }
 
   return data;
 }
 
 export const api = {
+  verifyEmail: (email, token) =>
+    request("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ email, token }),
+    }),
+
+  resendVerificationEmail: (email) =>
+    request("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  getCart: () =>
+    request("/cart"),
+
+  saveCart: (items) =>
+    request("/cart", {
+      method: "PUT",
+      body: JSON.stringify({ items }),
+    }),
+
   getProducts: (params = "") =>
     request(`/products${params}`),
 

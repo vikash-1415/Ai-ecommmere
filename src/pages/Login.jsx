@@ -10,12 +10,15 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { login } = useAuth();
+  const { login, resendVerificationEmail } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(location.state?.message || "");
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
@@ -24,6 +27,9 @@ export default function Login() {
     try {
       setSubmitting(true);
       setError("");
+      setNotice("");
+      setVerificationMessage("");
+      setEmailNotVerified(false);
 
       await login(email, password);
 
@@ -32,8 +38,19 @@ export default function Login() {
       navigate(redirect);
     } catch (error) {
       setError(error.message);
+      setEmailNotVerified(error.code === "EMAIL_NOT_VERIFIED");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    try {
+      setVerificationMessage("");
+      const result = await resendVerificationEmail(email);
+      setVerificationMessage(result.message);
+    } catch (error) {
+      setVerificationMessage(error.message);
     }
   }
 
@@ -61,6 +78,25 @@ export default function Login() {
             {error && (
               <div className="mt-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">
                 {error}
+              </div>
+            )}
+            {notice && (
+              <div className="mt-6 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                {notice}
+              </div>
+            )}
+            {emailNotVerified && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  className="font-bold underline"
+                >
+                  Resend verification email
+                </button>
+                {verificationMessage && (
+                  <p className="mt-2">{verificationMessage}</p>
+                )}
               </div>
             )}
 

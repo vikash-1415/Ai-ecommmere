@@ -38,13 +38,15 @@ export default function Register() {
       setSubmitting(true);
       setError("");
 
-      await register(
+      const result = await register(
         form.name,
         form.email,
         form.password
       );
 
-      navigate("/");
+      navigate("/login", {
+        state: { message: result.message },
+      });
     } catch (error) {
       setError(error.message);
     } finally {
@@ -112,7 +114,7 @@ export default function Register() {
                 onChange={(value) =>
                   update("password", value)
                 }
-                placeholder="Minimum 6 characters"
+                placeholder="Minimum 8 characters"
               />
 
               <button

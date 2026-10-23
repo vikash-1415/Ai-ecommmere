@@ -9,6 +9,7 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
 import Orders from "./pages/Orders";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Wishlist from "./pages/Wishlist";
@@ -83,6 +84,7 @@ function App() {
         {/* Auth */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Admin */}
         <Route path="/admin" element={<AdminDashboard />} />
