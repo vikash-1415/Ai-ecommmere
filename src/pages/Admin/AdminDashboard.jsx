@@ -10,8 +10,8 @@ import {
   ArrowRight, Zap, Target, CheckCircle2, ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { API_URL } from "../../services/apiBaseUrl";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 function authHeaders() {
   const token = localStorage.getItem("weathercart-token");
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };

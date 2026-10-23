@@ -1,11 +1,24 @@
 // WeatherCart Production Service Worker
-const CACHE_NAME = "weathercart-v1";
+const CACHE_NAME = "weathercart-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/favicon.svg",
   "/manifest.json",
 ];
+
+function offlineResponse() {
+  return new Response(
+    JSON.stringify({
+      success: false,
+      message: "You appear to be offline.",
+    }),
+    {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+}
 
 // Install: Cache critical shell assets
 self.addEventListener("install", (event) => {
@@ -45,7 +58,9 @@ self.addEventListener("fetch", (event) => {
   // For API endpoints, prefer fresh network; fallback to cached if offline
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request).catch(async () => {
+        return (await caches.match(event.request)) || offlineResponse();
+      })
     );
     return;
   }
@@ -69,7 +84,7 @@ self.addEventListener("fetch", (event) => {
             }
             return networkResponse;
           })
-          .catch(() => cachedResponse);
+          .catch(() => cachedResponse || offlineResponse());
 
         return cachedResponse || fetchPromise;
       })
@@ -80,13 +95,17 @@ self.addEventListener("fetch", (event) => {
   // HTML navigation: Network-first with cached index.html fallback
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match("/index.html"))
+      fetch(event.request).catch(async () => {
+        return (await caches.match("/index.html")) || offlineResponse();
+      })
     );
     return;
   }
 
   // Default fallback
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request).catch(async () => {
+      return (await caches.match(event.request)) || offlineResponse();
+    })
   );
 });
